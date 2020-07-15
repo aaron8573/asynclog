@@ -102,8 +102,8 @@ func New(s LogConfig) *Logger {
     }
 
     if logger.logType == WRITE_LOG_TYPE_AFILE {
-        if s.QueueSize == 0 {
-            s.QueueSize = 10000
+        if logger.queueSize == 0 {
+            logger.queueSize = 10000
         }
 
         logQueue = make(chan []byte, s.QueueSize)
@@ -112,6 +112,11 @@ func New(s LogConfig) *Logger {
     }
 
     if logger.logType == WRITE_LOG_TYPE_KAFKA || logger.logType == WRITE_LOG_TYPE_FILE_AND_KAFKA {
+        if logger.queueSize == 0 {
+            logger.queueSize = 10000
+        }
+
+        logQueue = make(chan []byte, s.QueueSize)
         queueQuit = make(chan bool)
         logger.asyncKafka = newAsyncKafka(s.KafkaConfig.Brokers, s.KafkaConfig.Topic, s.KafkaConfig.Version,
             s.KafkaConfig.Compression, s.KafkaConfig.RequiredAcks, s.KafkaConfig.MaxMessageBytes)
