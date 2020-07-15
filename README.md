@@ -36,7 +36,7 @@
 import "asynclog"
 
 log = asynclog.New(LogConfig{
-        Type:         WRITE_LOG_TYPE_FILE,
+        Type:         WRITE_LOG_TYPE_AFILE,
         QueueSize:    1000000,
         BufferSize:   1 * 1024 * 1024,
         FileFullPath: "demo.log",
@@ -52,19 +52,11 @@ log.AsyncQuite()
 ```
 ```go
 // 同步写文件日志
-log = asynclog.New(LogConfig{
-        Type:         WRITE_LOG_TYPE_NORMAL,
-  			FileFullPath: "demo.log",
-        Level:        0,
-        Flag:         L_Time | L_LEVEL | L_SHORT_FILE,
-        KafkaConfig:KafkaConfig{
-            Brokers: []string{"localhost:9092"},
-            Topic:           "test",
-            Version:         "1.0.0.0",
-            Compression:     0,
-            RequiredAcks:    1,
-            MaxMessageBytes: 2 * 1024 * 1024,
-        },
+log = New(LogConfig{
+        Type:  WRITE_LOG_TYPE_FILE,
+        Level: 0,
+        FileFullPath: "demo.log",
+        Flag:  L_Time | L_LEVEL | L_SHORT_FILE,
     })
 
 
@@ -101,8 +93,10 @@ log.AsyncQuite()
 
 ```
 Type: 写日志类型
-    WRITE_LOG_TYPE_NORMAL —— 同步写文本日志
-    WRITE_LOG_TYPE_ASYNC —— 异步写文本日志
+    WRITE_LOG_TYPE_FILE —— 同步写文本日志
+    WRITE_LOG_TYPE_AFILE —— 异步写文本日志
+    WRITE_LOG_TYPE_KAFKA —— 异步发送kafka
+    WRITE_LOG_TYPE_FILE_AND_KAFKA —— 同步写文本日志并异步发送kafka （调试场景）
 
 QueueSize： 队列大小，默认10000。根据服务QPS设置此值
 

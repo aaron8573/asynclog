@@ -62,14 +62,15 @@ type Logger struct {
 }
 
 const (
-    L_Time                = 1 << iota             // log time e.g: 2020-07-13 17:02:42.274391 +0800 CST
-    L_LEVEL                                       // log level [INFO]
-    L_LONG_FILE                                   // long log file
-    L_SHORT_FILE                                  // short log file
-    DEFAULT_LOG           string      = "log.log" //
-    WRITE_LOG_TYPE_NORMAL int         = 1         // write log file
-    WRITE_LOG_TYPE_FILE   int         = 2         // async write log file
-    WRITE_LOG_TYPE_KAFKA  int         = 3         // async write kafka
+    L_Time                        = 1 << iota             // log time e.g: 2020-07-13 17:02:42.274391 +0800 CST
+    L_LEVEL                                               // log level [INFO]
+    L_LONG_FILE                                           // long log file
+    L_SHORT_FILE                                          // short log file
+    DEFAULT_LOG                   string      = "log.log" //
+    WRITE_LOG_TYPE_FILE           int         = 1         // write log file
+    WRITE_LOG_TYPE_AFILE          int         = 2         // async write log file
+    WRITE_LOG_TYPE_KAFKA          int         = 3         // async write kafka
+    WRITE_LOG_TYPE_FILE_AND_KAFKA int         = 4         // kafka and file
 )
 
 var (
@@ -92,7 +93,15 @@ func New(s LogConfig) *Logger {
         }
     }
 
-    if logger.logType == WRITE_LOG_TYPE_FILE {
+    if logger.logType == WRITE_LOG_TYPE_FILE || logger.logType == WRITE_LOG_TYPE_FILE_AND_KAFKA {
+
+        if logger.file, err = os.OpenFile(s.FileFullPath, os.O_RDWR|os.O_SYNC|os.O_CREATE|os.O_APPEND, 0644);
+            err != nil {
+            panic("open log file:" + s.FileFullPath + " error: " + err.Error())
+        }
+    }
+
+    if logger.logType == WRITE_LOG_TYPE_AFILE {
         if s.QueueSize == 0 {
             s.QueueSize = 10000
         }
@@ -100,17 +109,13 @@ func New(s LogConfig) *Logger {
         logQueue = make(chan []byte, s.QueueSize)
         logger.asyncLogger = newAsyncFile(s.FileFullPath, s.SplitLogType, s.BufferSize)
 
-    } else if logger.logType == WRITE_LOG_TYPE_KAFKA {
+    }
+
+    if logger.logType == WRITE_LOG_TYPE_KAFKA || logger.logType == WRITE_LOG_TYPE_FILE_AND_KAFKA {
         queueQuit = make(chan bool)
         logger.asyncKafka = newAsyncKafka(s.KafkaConfig.Brokers, s.KafkaConfig.Topic, s.KafkaConfig.Version,
             s.KafkaConfig.Compression, s.KafkaConfig.RequiredAcks, s.KafkaConfig.MaxMessageBytes)
 
-    } else {
-
-        if logger.file, err = os.OpenFile(s.FileFullPath, os.O_RDWR|os.O_SYNC|os.O_CREATE|os.O_APPEND, 0644);
-            err != nil {
-            panic("open log file:" + s.FileFullPath + " error: " + err.Error())
-        }
     }
 
     return logger
@@ -247,11 +252,13 @@ func (c *Logger) Write(level int, s string) (n int, err error) {
     if c.logLevel <= level {
         header := c.formatHeader(time.Now(), level)
         data := []byte(header + s)
-        if c.logType > WRITE_LOG_TYPE_NORMAL {
+        if c.logType > WRITE_LOG_TYPE_FILE {
             err := c.WriteQueue(data)
             n = len(s)
             return n, err
-        } else {
+        }
+
+        if c.logType == WRITE_LOG_TYPE_FILE_AND_KAFKA || c.logType == WRITE_LOG_TYPE_FILE {
             br := []byte("\n")
             for i := 0; i < len(br); i++ {
                 data = append(data, br[i])

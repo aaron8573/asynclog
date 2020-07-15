@@ -13,19 +13,20 @@ import (
 )
 
 var (
-    log    *Logger
+    log *Logger
 )
 
 func TestNew(t *testing.T) {
-
+    // async write file
     // 1000000
     // BufferSize:1MB 2.50s
     // BufferSize:2MB 2.37s
     log = New(LogConfig{
-        Type:         WRITE_LOG_TYPE_FILE,
+        Type:         WRITE_LOG_TYPE_AFILE,
         QueueSize:    1000000,
         BufferSize:   1 * 1024 * 1024, // 1MB
         SplitLogType: SPLIT_LOG_TYPE_NORMAL,
+        FileFullPath: "demo.log",
         Level:        0,
         Flag:         L_Time | L_LEVEL | L_SHORT_FILE,
     })
@@ -38,12 +39,29 @@ func TestNew(t *testing.T) {
 }
 
 func TestNew2(t *testing.T) {
+    // write file
     log = New(LogConfig{
-        Type:         WRITE_LOG_TYPE_NORMAL,
-        Level:        0,
-        Flag:         L_Time | L_LEVEL | L_SHORT_FILE,
-        KafkaConfig:KafkaConfig{
-            Brokers: []string{"localhost:9092"},
+        Type:  WRITE_LOG_TYPE_FILE,
+        Level: 0,
+        FileFullPath: "demo.log",
+        Flag:  L_Time | L_LEVEL | L_SHORT_FILE,
+    })
+
+    for i := 0; i < 100; i++ {
+        log.Info("test write log")
+    }
+
+    log.Close()
+}
+
+func TestNew3(t *testing.T) {
+    // send kafka
+    log = New(LogConfig{
+        Type: WRITE_LOG_TYPE_KAFKA,
+        QueueSize: 1000000,
+        Level:     0,
+        KafkaConfig: KafkaConfig{
+            Brokers:         []string{"localhost:9092"},
             Topic:           "test",
             Version:         "1.0.0.0",
             Compression:     0,
@@ -56,5 +74,5 @@ func TestNew2(t *testing.T) {
         log.Info("test write log")
     }
 
-    log.Close()
+    log.AsyncQuite()
 }
