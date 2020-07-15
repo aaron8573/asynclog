@@ -105,7 +105,7 @@ BufferSize： 缓存buffer块大小， 默认1MB （1 * 1024 * 1024）
 FileFullPath：落日志文件全路径（包括文件名）
 
 SplitLogType：分割日志方式
-    async_file.SPLIT_LOG_TYPE_NORMAL —— 默认不分割
+    SPLIT_LOG_TYPE_NORMAL —— 默认不分割
     SPLIT_LOG_TYPE_DAY —— 按天分割
     SPLIT_LOG_TYPE_HOUR —— 按小时分割
 
