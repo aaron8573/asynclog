@@ -71,6 +71,7 @@ log.Close()
 log = asynclog.New(LogConfig{
         Type:         WRITE_LOG_TYPE_KAFKA,
         Level:        0,
+  			QueueSize:    1000000,
         KafkaConfig:KafkaConfig{
             Brokers: []string{"localhost:9092"},
             Topic:           "test",
