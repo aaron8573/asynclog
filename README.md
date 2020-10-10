@@ -34,16 +34,16 @@
 
 ```go
 // 异步写文件日志
-import "asynclog"
+import "github.com/aaron8573/asynclog"
 
-log = asynclog.New(LogConfig{
-        Type:         WRITE_LOG_TYPE_AFILE,
+log = asynclog.New(asynclog.LogConfig{
+        Type:         asynclog.WRITE_LOG_TYPE_AFILE,
         QueueSize:    1000000,
         BufferSize:   1 * 1024 * 1024,
         FileFullPath: "demo.log",
-        SplitLogType: async_file.SPLIT_LOG_TYPE_NORMAL,
+        SplitLogType: asynclog.SPLIT_LOG_TYPE_NORMAL,
         Level:        1,
-        Flag:         L_Time | L_LEVEL | L_SHORT_FILE,
+        Flag:         asynclog.L_Time | asynclog.L_LEVEL | asynclog.L_SHORT_FILE,
     })
 
 log.Info("test write log")
@@ -54,10 +54,10 @@ log.AsyncQuite()
 ```go
 // 同步写文件日志
 log = New(LogConfig{
-        Type:  WRITE_LOG_TYPE_FILE,
+        Type:  asynclog.WRITE_LOG_TYPE_FILE,
         Level: 0,
         FileFullPath: "demo.log",
-        Flag:  L_Time | L_LEVEL | L_SHORT_FILE,
+        Flag:  asynclog.L_Time | asynclog.L_LEVEL | asynclog.L_SHORT_FILE,
     })
 
 
@@ -70,7 +70,7 @@ log.Close()
 ```go
 // 异步写kafka日志
 log = asynclog.New(LogConfig{
-        Type:         WRITE_LOG_TYPE_KAFKA,
+        Type:         asynclog.WRITE_LOG_TYPE_KAFKA,
         Level:        0,
   			QueueSize:    1000000,
         KafkaConfig:KafkaConfig{
