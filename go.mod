@@ -1,4 +1,4 @@
-module asynclog
+module github.com/aaron8573/asynclog
 
 go 1.13
 
