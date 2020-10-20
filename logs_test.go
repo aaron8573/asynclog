@@ -28,7 +28,7 @@ func TestNew(t *testing.T) {
         SplitLogType: SPLIT_LOG_TYPE_NORMAL,
         FileFullPath: "demo.log",
         Level:        0,
-        Flag:         L_Time | L_LEVEL | L_LONG_FILE,
+        Flag:         L_Time | L_LEVEL | L_LONG_FILE | L_PID,
     })
 
     for i := 0; i < 1000000; i++ {

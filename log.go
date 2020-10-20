@@ -14,6 +14,7 @@ import (
     "os"
     "runtime"
     "sync"
+    "syscall"
     "time"
 )
 
@@ -66,6 +67,7 @@ const (
     L_LEVEL                                               // log level [INFO]
     L_LONG_FILE                                           // long log file
     L_SHORT_FILE                                          // short log file
+    L_PID                                                 // pid
     DEFAULT_LOG                   string      = "log.log" //
     WRITE_LOG_TYPE_FILE           int         = 1         // write log file
     WRITE_LOG_TYPE_AFILE          int         = 2         // async write log file
@@ -77,6 +79,7 @@ var (
     logQueue  chan []byte // log queue
     isQuit    bool
     queueQuit chan bool
+    pid       int
 )
 
 func New(s LogConfig) *Logger {
@@ -123,6 +126,8 @@ func New(s LogConfig) *Logger {
 
     }
 
+    pid = syscall.Getpid()
+
     return logger
 }
 
@@ -147,6 +152,10 @@ func (c *Logger) formatHeader(t time.Time, lvl int) (header string) {
 
     if c.flag&L_Time != 0 {
         header = fmt.Sprintf("%v ", t.Local())
+    }
+
+    if c.flag&L_PID != 0 {
+        header += fmt.Sprintf("[%d] ", pid)
     }
 
     if c.flag&L_LEVEL != 0 {
