@@ -29,6 +29,7 @@ func TestNew(t *testing.T) {
         FileFullPath: "demo.log",
         Level:        0,
         Flag:         L_Time | L_LEVEL | L_LONG_FILE | L_PID,
+        CallDepth:    2,
     })
 
     for i := 0; i < 1000000; i++ {
@@ -41,10 +42,10 @@ func TestNew(t *testing.T) {
 func TestNew2(t *testing.T) {
     // write file
     log = New(LogConfig{
-        Type:  WRITE_LOG_TYPE_FILE,
-        Level: 0,
+        Type:         WRITE_LOG_TYPE_FILE,
+        Level:        0,
         FileFullPath: "demo.log",
-        Flag:  L_Time | L_LEVEL | L_SHORT_FILE,
+        Flag:         L_Time | L_LEVEL | L_SHORT_FILE,
     })
 
     for i := 0; i < 100; i++ {
@@ -57,7 +58,7 @@ func TestNew2(t *testing.T) {
 func TestNew3(t *testing.T) {
     // send kafka
     log = New(LogConfig{
-        Type: WRITE_LOG_TYPE_KAFKA,
+        Type:      WRITE_LOG_TYPE_KAFKA,
         QueueSize: 1000000,
         Level:     0,
         KafkaConfig: KafkaConfig{

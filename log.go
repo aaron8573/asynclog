@@ -34,6 +34,7 @@ type LogConfig struct {
     BufferSize   int    // buffer大小
     SplitLogType int    // 切割日志方式 0-不切割，1-按天，2-按小时
     Level        int    // 日志级别
+    CallDepth    int    // 写日志文件，回调runtime栈深度，默认是2
     Flag         int
     KafkaConfig  KafkaConfig
 }
@@ -56,6 +57,7 @@ type Logger struct {
     levelMap    map[int]string // 日志级别
     splitLog    int            // 切割日志方式 0-不切割，1-按天，2-按小时
     file        *os.File       // file
+    callDepth   int            // runtime.Caller depth
     asyncLogger *asyncFile
     asyncKafka  *asyncKafka
     flag        int
@@ -126,6 +128,10 @@ func New(s LogConfig) *Logger {
 
     }
 
+    if s.CallDepth > 0 {
+        logger.callDepth = s.CallDepth
+    }
+
     pid = syscall.Getpid()
 
     return logger
@@ -144,6 +150,7 @@ func defaultLoggerConfig() *Logger {
             4: "INFO",
             5: "DEBUG",
         },
+        callDepth: 2,
     }
 }
 
@@ -164,14 +171,13 @@ func (c *Logger) formatHeader(t time.Time, lvl int) (header string) {
 
     if c.flag&(L_LONG_FILE|L_SHORT_FILE) != 0 {
         var (
-            ok        bool
-            callDepth = 2
-            file      string
-            line      int
+            ok   bool
+            file string
+            line int
         )
 
         c.Lock()
-        _, file, line, ok = runtime.Caller(callDepth)
+        _, file, line, ok = runtime.Caller(c.callDepth)
         if !ok {
             file = "???"
             line = 0
