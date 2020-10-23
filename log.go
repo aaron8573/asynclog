@@ -62,6 +62,9 @@ type Logger struct {
     asyncKafka  *asyncKafka
     flag        int
     queueSize   int
+    logQueue    chan []byte // log queue
+    queueQuit   chan bool
+    pid         int
 }
 
 const (
@@ -75,13 +78,6 @@ const (
     WRITE_LOG_TYPE_AFILE          int         = 2         // async write log file
     WRITE_LOG_TYPE_KAFKA          int         = 3         // async write kafka
     WRITE_LOG_TYPE_FILE_AND_KAFKA int         = 4         // kafka and file
-)
-
-var (
-    logQueue  chan []byte // log queue
-    isQuit    bool
-    queueQuit chan bool
-    pid       int
 )
 
 func New(s LogConfig) *Logger {
@@ -111,8 +107,8 @@ func New(s LogConfig) *Logger {
             logger.queueSize = 10000
         }
 
-        logQueue = make(chan []byte, s.QueueSize)
-        logger.asyncLogger = newAsyncFile(s.FileFullPath, s.SplitLogType, s.BufferSize)
+        logger.logQueue = make(chan []byte, s.QueueSize)
+        logger.asyncLogger = newAsyncFile(s.FileFullPath, s.SplitLogType, s.BufferSize, logger.logQueue)
 
     }
 
@@ -121,10 +117,10 @@ func New(s LogConfig) *Logger {
             logger.queueSize = 10000
         }
 
-        logQueue = make(chan []byte, s.QueueSize)
-        queueQuit = make(chan bool)
+        logger.logQueue = make(chan []byte, s.QueueSize)
+        logger.queueQuit = make(chan bool)
         logger.asyncKafka = newAsyncKafka(s.KafkaConfig.Brokers, s.KafkaConfig.Topic, s.KafkaConfig.Version,
-            s.KafkaConfig.Compression, s.KafkaConfig.RequiredAcks, s.KafkaConfig.MaxMessageBytes)
+            s.KafkaConfig.Compression, s.KafkaConfig.RequiredAcks, s.KafkaConfig.MaxMessageBytes, logger.logQueue)
 
     }
 
@@ -132,7 +128,7 @@ func New(s LogConfig) *Logger {
         logger.callDepth = s.CallDepth
     }
 
-    pid = syscall.Getpid()
+    logger.pid = syscall.Getpid()
 
     return logger
 }
@@ -162,7 +158,7 @@ func (c *Logger) formatHeader(t time.Time, lvl int) (header string) {
     }
 
     if c.flag&L_PID != 0 {
-        header += fmt.Sprintf("[%d] ", pid)
+        header += fmt.Sprintf("[%d] ", c.pid)
     }
 
     if c.flag&L_LEVEL != 0 {
@@ -293,21 +289,19 @@ func (c *Logger) Write(level int, s string) (n int, err error) {
 
 // write queue
 func (c *Logger) WriteQueue(data []byte) error {
-    if len(logQueue) >= c.queueSize {
+    if len(c.logQueue) >= c.queueSize {
         return errors.New("log queue has reaches maximum")
     }
 
-    logQueue <- data
+    c.logQueue <- data
 
     return nil
 }
 
 // quite write log
 func (c *Logger) AsyncQuite() bool {
-    isQuit = true
-
     if c.logType == WRITE_LOG_TYPE_KAFKA {
-        return <-queueQuit
+        return c.asyncKafka.SignQuite()
     } else {
         return c.asyncLogger.SignQuite()
     }

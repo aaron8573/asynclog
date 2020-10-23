@@ -23,6 +23,7 @@ type asyncFile struct {
     BufferSize int        // log buffer size
     file       *os.File   // *os.file
     logTime    int        // last flush log success time
+    logQueue   chan []byte
 }
 
 type BufferLog struct {
@@ -36,11 +37,12 @@ const (
     SPLIT_LOG_TYPE_HOUR   int = 2 // split by hour
 )
 
-func newAsyncFile(fileDir string, splitType, bufferSize int) *asyncFile {
+func newAsyncFile(fileDir string, splitType, bufferSize int, q chan []byte) *asyncFile {
     al := new(asyncFile)
     al.FileDir = fileDir
     al.SplitType = splitType
     al.BufferSize = bufferSize
+    al.logQueue = q
 
     al.check()
 
@@ -57,7 +59,7 @@ func newAsyncFile(fileDir string, splitType, bufferSize int) *asyncFile {
     return al
 }
 
-func (c *asyncFile) check(){
+func (c *asyncFile) check() {
     if c.FileDir == "" {
         c.FileDir = "log.log"
     }
@@ -75,7 +77,7 @@ func (c *asyncFile) TickerWriteBuffer() {
 
     for {
         select {
-        case data := <-logQueue:
+        case data := <-c.logQueue:
             var tryTimes = 1
             for {
                 fileDir, needSplit := c.SplitFileFullPath()
@@ -220,7 +222,7 @@ func (c *asyncFile) SignQuite() bool {
         case <-ticker:
             c.FlushBuffer()
 
-            l = len(logQueue)
+            l = len(c.logQueue)
             fmt.Printf("log queue have log: %d ,wait exit\n", l)
             if l == 0 {
                 c.CloseFile()

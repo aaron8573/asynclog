@@ -23,10 +23,13 @@ type asyncKafka struct {
     compression     int
     requiredAcks    int
     MaxMessageBytes int
+    logQueue        chan []byte
+    isQuit          bool
+    queueQuit       chan bool
 }
 
 // new kafka
-func newAsyncKafka(brokers []string, topic, version string, compression, acks, maxMessageBytes int, ) *asyncKafka {
+func newAsyncKafka(brokers []string, topic, version string, compression, acks, maxMessageBytes int, q chan []byte) *asyncKafka {
 
     c := new(asyncKafka)
     c.brokers = brokers
@@ -35,6 +38,7 @@ func newAsyncKafka(brokers []string, topic, version string, compression, acks, m
     c.compression = compression
     c.requiredAcks = acks
     c.MaxMessageBytes = maxMessageBytes
+    c.logQueue = q
 
     c.check()
 
@@ -89,7 +93,7 @@ func (c *asyncKafka) flushKafka() {
     var logBody []byte
     for {
         select {
-        case logBody = <-logQueue:
+        case logBody = <-c.logQueue:
             msg := &sarama.ProducerMessage{
                 Topic: c.topic,
                 Value: sarama.ByteEncoder(string(logBody)),
@@ -101,7 +105,7 @@ func (c *asyncKafka) flushKafka() {
             data, err := msg.Value.Encode()
             // send success
             fmt.Printf("send kafka success | data: %v | topic: %s | offset: %d | partition: %d | error: %v", string(data), msg.Topic, msg.Offset, msg.Partition, err)
-            if isQuit && len(logQueue) == 0 {
+            if c.isQuit && len(c.logQueue) == 0 {
                 goto END
             }
 
@@ -109,25 +113,31 @@ func (c *asyncKafka) flushKafka() {
             msg, _ := kafkaErr.Msg.Value.Encode()
             // send failed
             //fmt.Printf("send kafka error: %s | data: %s ", kafkaErr.Error(), string(msg))
-            if isQuit {
+            if c.isQuit {
                 // send failed, write screen when sign quite
                 fmt.Println("log queue is exit, send kafka error: ", kafkaErr.Error(), " message: ", string(msg))
 
-                if len(logQueue) == 0 {
+                if len(c.logQueue) == 0 {
                     goto END
                 }
 
             } else {
                 // send failed, retry
-                logQueue <- msg
+                c.logQueue <- msg
             }
         }
     }
 
 END:
     fmt.Println("log kafka is exit")
-    queueQuit <- true
+    c.queueQuit <- true
     return
+}
+
+// quite
+func (c *asyncKafka) SignQuite() bool {
+    c.isQuit = true
+    return <-c.queueQuit
 }
 
 // kafka compression
